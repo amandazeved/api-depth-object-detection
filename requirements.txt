@@ -10,6 +10,7 @@ Flask==3.1.0
 Flask-Testing==0.8.1
 fonttools==4.56.0
 fsspec==2024.6.1
+gunicorn==23.0.0
 idna==3.10
 iniconfig==2.0.0
 itsdangerous==2.2.0
