@@ -7,7 +7,7 @@ from io import BytesIO
 main_bp = Blueprint('main', __name__)
 
 try:
-    model = YOLO("yolo11n.pt")
+    model = YOLO("yolo11x.pt")
 except Exception as e:
     print("Erro ao carregar modelo YOLO", e)
 
