@@ -1,7 +1,6 @@
 __pycache__/
 .pytest_cache/
 app/__pycache__/
-app/yolo.py
 assets/
 tests/
 venv/
@@ -9,3 +8,5 @@ venv/
 *.jpeg
 *.jpg
 *.png
+*.pt
+*.txt

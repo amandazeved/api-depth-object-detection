@@ -1,66 +1,65 @@
-import base64
-from flask import Blueprint, request, jsonify
+import time
 from ultralytics import YOLO
-from PIL import Image
-from io import BytesIO
+from flask import Blueprint, request, jsonify
+from app.utils import (
+    decode_base64_image, 
+    format_description, 
+    detect_objects, 
+    load_depth_anything, 
+    generate_depth_map, 
+    calculate_object_distances
+)
 
 main_bp = Blueprint('main', __name__)
+depth_model = load_depth_anything() # carrega modelo de profundidade
 
 try:
-    model = YOLO("yolo11n.pt")
+    yolo_model = YOLO("yolo11n.pt")
 except Exception as e:
+    yolo_model = None
     print("Erro ao carregar modelo YOLO", e)
-
-def decode_base64_image(image_base64):
-    """Função para converter imagem base64 para objeto de imagem."""
-    if "," in image_base64:
-        image_base64 = image_base64.split(",")[1]  # Remove cabeçalho "data:image/jpeg;base64,"
-    
-    try:
-        image_data = base64.b64decode(image_base64)
-        image = Image.open(BytesIO(image_data))
-        return image
-    except Exception as e:
-        raise ValueError(f"Erro ao decodificar imagem: {str(e)}")
 
 @main_bp.route('/')
 def home():
-    return "Hello world"
+    return "Hello, world"
 
-@main_bp.route("/upload", methods=['POST'])
-def upload_file():
+@main_bp.route("/process_image", methods=['POST'])
+def process_image():
     try:
+        if not yolo_model or not depth_model:
+            return jsonify({"error": "Modelo YOLO ou Depth Anything não foi carregado corretamente."}), 400
+
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "Nenhum dado JSON recebido"}), 400
+        if not data or "image" not in data:
+            return jsonify({"error": "Nenhuma imagem enviada no corpo da requisição."}), 400
 
         image_base64 = data.get("image")
-        if not image_base64:
-            return jsonify({"error": "Nenhuma imagem recebida"}), 400
-
-        print("Imagem base64 recebida com sucesso")
+        print("Imagem recebida com sucesso.")
         
-        # Converte Base64 para imagem
+        # Decodifica imagem base64 para formato OpenCV
         try:
             image = decode_base64_image(image_base64)
+            image_width, _ = image.size
         except Exception as e:
-            return jsonify({"error": str(e)}), 400
+            return jsonify({"error": f"Erro ao decodificar image: {str(e)}"}), 400
+        
+        print("Imagem recebida e decodificada. Iniciando detecção...")
+        
+        t_start = time.perf_counter()
 
-        print("Imagem decodificada com sucesso, processando...")
+        detections = detect_objects(yolo_model, image)
+        if len(detections) == 0:
+            return jsonify({"error": "Nenhum objeto detectado na imagem."}), 400
+        
+        depth_map = generate_depth_map(depth_model, image)
+        results = calculate_object_distances(detections, depth_map)
+        description  = format_description(results, image_width)
 
-        # Fazer inferencia com YOLO
-        results = model(image)
+        t3 = time.perf_counter()
+        print(f"Processamento finalizado em {(t3 - t_start):.2f} segundos.")
 
-        # Processar os resultados
-        classes = []
-        for result in results:
-            for box in result.boxes:
-                class_id = int(box.cls[0].item())
-                class_name = model.names[class_id]
-
-                classes.append(class_name)
-                
-        return jsonify({"class": classes})
+        return jsonify({"descricao": description , "resultados": results}), 200
     
     except Exception as e:
+        print(f"Erro interno: {str(e)}")
         return jsonify({"error": f"Erro inesperado: {str(e)}"}), 500
