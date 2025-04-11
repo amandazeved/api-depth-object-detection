@@ -1,3 +1,4 @@
+import json
 import time
 import os
 import gc
@@ -83,6 +84,7 @@ def detect_objects_route():
         
         file = request.files['image']
         image = Image.open(file.stream)
+        # image = image.resize((640, 480))
         
         print("Imagem recebida. Iniciando detecção...")
 
@@ -102,12 +104,16 @@ def detect_objects_route():
 
 @main_bp.route("/calculate_distance", methods=['POST'])
 def calculate_distance_route():
-    if 'image' not in request.files:
-        return jsonify({"error": "Nenhuma imagem enviada."}), 400
+    image = None  
+    depth_map = None
+    detections = None
+    results = None
     
     try:
-        data = request.get_json()
-        detections = data.get("detections")
+        if 'image' not in request.files or 'detections' not in request.form:
+            return jsonify({"error": "Campos 'image' e 'detections' são obrigatórios."}), 400
+        
+        detections = json.loads(request.form['detections'])
 
         if not detections:
             return jsonify({"error": "Faltando 'detections'."}), 400
@@ -120,7 +126,7 @@ def calculate_distance_route():
         
         file = request.files['image']
         image = Image.open(file.stream)
-        image = image.resize((640, 480))
+        # image = image.resize((640, 480))
         image_width, _ = image.size
         
         print("Imagem recebida. Gerando mapa de profundidade e calculando distâncias de objetos...")
@@ -136,5 +142,5 @@ def calculate_distance_route():
         return jsonify({"error": f"Erro inesperado: {str(e)}"}), 500
     finally:
         # Limpa memória
-        del image, depth_map, detections, results, description
+        del image, depth_map, detections, results
         gc.collect()
