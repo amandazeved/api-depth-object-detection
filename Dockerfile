@@ -1,7 +1,13 @@
 FROM python:3.11.9-slim
 
 # Instala dependências de sistema (libGL para OpenCV)
-RUN apt-get update && apt-get install -y libgl1 && apt-get clean
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Define diretório de trabalho
 WORKDIR /app
