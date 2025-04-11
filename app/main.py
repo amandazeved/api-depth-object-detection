@@ -1,8 +1,8 @@
 import time
+from PIL import Image
 from ultralytics import YOLO
 from flask import Blueprint, request, jsonify
-from app.utils import (
-    decode_base64_image, 
+from app.utils import ( 
     format_description, 
     detect_objects, 
     load_depth_anything, 
@@ -25,25 +25,18 @@ def home():
 
 @main_bp.route("/process_image", methods=['POST'])
 def process_image():
+    if 'image' not in request.files:
+        return jsonify({"error": "Nenhuma imagem enviada."}), 400
+    
     try:
         if not yolo_model or not depth_model:
             return jsonify({"error": "Modelo YOLO ou Depth Anything não foi carregado corretamente."}), 400
 
-        data = request.get_json()
-        if not data or "image" not in data:
-            return jsonify({"error": "Nenhuma imagem enviada no corpo da requisição."}), 400
-
-        image_base64 = data.get("image")
-        print("Imagem recebida com sucesso.")
+        file = request.files['image']
+        image = Image.open(file.stream)
+        image_width, _ = image.size
         
-        # Decodifica imagem base64 para formato OpenCV
-        try:
-            image = decode_base64_image(image_base64)
-            image_width, _ = image.size
-        except Exception as e:
-            return jsonify({"error": f"Erro ao decodificar image: {str(e)}"}), 400
-        
-        print("Imagem recebida e decodificada. Iniciando detecção...")
+        print("Imagem recebida. Iniciando detecção...")
         
         t_start = time.perf_counter()
 
@@ -57,6 +50,8 @@ def process_image():
 
         t3 = time.perf_counter()
         print(f"Processamento finalizado em {(t3 - t_start):.2f} segundos.")
+        print(description)
+        print(results)
 
         return jsonify({"descricao": description , "resultados": results}), 200
     

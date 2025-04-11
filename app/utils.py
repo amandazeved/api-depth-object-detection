@@ -89,18 +89,6 @@ CLASS_TRANSLATIONS = {
     79: "escova de dentes"
 }
 
-def decode_base64_image(image_base64):
-    """Função para converter imagem base64 para objeto de imagem."""
-    if "," in image_base64:
-        image_base64 = image_base64.split(",")[1]  # Remove cabeçalho "data:image/jpeg;base64,"
-    
-    try:
-        image_data = base64.b64decode(image_base64)
-        image = Image.open(BytesIO(image_data))
-        return image
-    except Exception as e:
-        raise ValueError(f"Erro ao decodificar imagem: {str(e)}")
-
 def pluralize(word):
     """Função auxiliar na formatação da descrição de imagem"""
     if word.endswith("l"):
