@@ -1,6 +1,6 @@
 import time
 import os
-import uuid
+import gc
 from PIL import Image
 from ultralytics import YOLO
 from flask import Blueprint, request, jsonify
@@ -83,11 +83,6 @@ def detect_objects_route():
         
         file = request.files['image']
         image = Image.open(file.stream)
-
-        # Gera ID único e salva
-        image_id = str(uuid.uuid4())
-        path = os.path.join(UPLOAD_FOLDER, f"{image_id}.png")
-        image.save(path)
         
         print("Imagem recebida. Iniciando detecção...")
 
@@ -95,33 +90,37 @@ def detect_objects_route():
         if len(detections) == 0:
             return jsonify({"error": "Nenhum objeto detectado na imagem."}), 400
 
-        return jsonify({"detections": detections, "image_id": image_id}), 200
+        return jsonify({"detections": detections}), 200
 
     except Exception as e:
         print(f"Erro interno: {str(e)}")
         return jsonify({"error": f"Erro inesperado: {str(e)}"}), 500
+    finally:
+        # Limpa memória
+        del image, yolo_model, detections
+        gc.collect()
 
 @main_bp.route("/calculate_distance", methods=['POST'])
 def calculate_distance_route():
+    if 'image' not in request.files:
+        return jsonify({"error": "Nenhuma imagem enviada."}), 400
+    
     try:
         data = request.get_json()
-        image_id = data.get("image_id")
         detections = data.get("detections")
 
-        if not image_id or not detections:
-            return jsonify({"error": "Faltando 'image_id' ou 'detections'."}), 400
-        
-        image_path = os.path.join(UPLOAD_FOLDER, f"{image_id}.png")
-        
-        if not os.path.exists(image_path):
-            return jsonify({"error": "Imagem não encontrada."}), 404
+        if not detections:
+            return jsonify({"error": "Faltando 'detections'."}), 400
+    
         
         depth_model = load_depth_anything() # carrega modelo de profundidade
         
         if not depth_model:
             return jsonify({"error": "Modelo Depth Anything V2 não foi carregado corretamente."}), 400
         
-        image = Image.open(image_path)
+        file = request.files['image']
+        image = Image.open(file.stream)
+        image = image.resize((640, 480))
         image_width, _ = image.size
         
         print("Imagem recebida. Gerando mapa de profundidade e calculando distâncias de objetos...")
@@ -135,15 +134,7 @@ def calculate_distance_route():
     except Exception as e:
         print(f"Erro interno: {str(e)}")
         return jsonify({"error": f"Erro inesperado: {str(e)}"}), 500
-    
     finally:
-        # Apaga a imagem após o processamento
-        try:
-            folder = 'tmp'
-            for filename in os.listdir(folder):
-                file_path = os.path.join(folder, filename)
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-            print("Pasta tmp limpa com sucesso.")
-        except Exception as cleanup_error:
-            print(f"Erro ao limpar pasta tmp: {cleanup_error}")
+        # Limpa memória
+        del image, depth_map, detections, results, description
+        gc.collect()
