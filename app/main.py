@@ -11,13 +11,6 @@ from app.utils import (
 )
 
 main_bp = Blueprint('main', __name__)
-depth_model = load_depth_anything() # carrega modelo de profundidade
-
-try:
-    yolo_model = YOLO("yolo11n.pt")
-except Exception as e:
-    yolo_model = None
-    print("Erro ao carregar modelo YOLO", e)
 
 @main_bp.route('/')
 def home():
@@ -29,6 +22,13 @@ def process_image():
         return jsonify({"error": "Nenhuma imagem enviada."}), 400
     
     try:
+        depth_model = load_depth_anything() # carrega modelo de profundidade
+        try:
+            yolo_model = YOLO("yolo11n.pt")
+        except Exception as e:
+            yolo_model = None
+            print("Erro ao carregar modelo YOLO", e)
+        
         if not yolo_model or not depth_model:
             return jsonify({"error": "Modelo YOLO ou Depth Anything não foi carregado corretamente."}), 400
 
