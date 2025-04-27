@@ -14,7 +14,7 @@ A API é capaz de:
 ## Como executar localmente
 1. Clone o repositótio:
 ```bash
-git clone https://github.com/amandazeved/api-flask-yolo
+git clone https://github.com/amandazeved/api-depth-object-detection.git
 cd api-flask-yolo
 ```
 
